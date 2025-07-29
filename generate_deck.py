@@ -37,7 +37,7 @@ def parse_vocab_list(chapter_md):
             vocab.append(m.group(1))
     return vocab
 
-def parse_vocab_info(vocab_md):
+def parse_vocab_info(vocab_md, vocab):
     with open(vocab_md, encoding='utf-8') as f:
         lines = f.readlines()
     meaning = ''
@@ -45,8 +45,15 @@ def parse_vocab_info(vocab_md):
     for i, line in enumerate(lines):
         if line.startswith('# '):
             meaning = line[2:].strip()
+            # Try to get kana from next line, otherwise fallback to vocab
             if i+1 < len(lines):
-                kana = lines[i+1].strip()
+                next_line = lines[i+1].strip()
+                if next_line and not next_line.startswith('#'):
+                    kana = next_line
+                else:
+                    kana = vocab
+            else:
+                kana = vocab
             break
     return meaning, kana
 
@@ -85,7 +92,7 @@ def get_model(model_id, name, fields, qfmt, afmt):
 
 def main():
     if len(sys.argv) != 2:
-        print('Usage: python generate_tobira_deck.py <chapter_number>')
+        print('Usage: python generate_deck.py <chapter_number>')
         sys.exit(1)
     ensure_dirs()
     chapter = sys.argv[1]
@@ -94,8 +101,10 @@ def main():
         print(f'Chapter file not found: {chapter_md}')
         sys.exit(1)
     vocab_list = parse_vocab_list(chapter_md)
-    notes = []
     media_files = []
+    vocab_infos = []
+
+    # Prepare models
     vocab_meaning_model = get_model(
         1607392300, 'Vocab->Meaning',
         ['Vocab', 'Meaning', 'Kana', 'Audio'],
@@ -111,30 +120,42 @@ def main():
         ['Meaning', 'Vocab', 'Kana', 'Audio'],
         MEANING_VOCAB_FRONT, MEANING_VOCAB_BACK
     )
+
+    # Gather vocab info and generate audio
     for vocab in vocab_list:
         vocab_md = os.path.join(VOCAB_PATH, f'{vocab}.md')
         if not os.path.exists(vocab_md):
             print(f'Vocab file not found: {vocab_md}')
             continue
-        meaning, kana = parse_vocab_info(vocab_md)
+        meaning, kana = parse_vocab_info(vocab_md, vocab)
         audio_file = get_audio_filename(vocab)
         generate_audio(vocab, kana)
         audio_tag = f'[sound:{audio_file}]'
         audio_path = os.path.join(AUDIO_PATH, audio_file)
         if os.path.exists(audio_path):
             media_files.append(audio_path)
+        vocab_infos.append((vocab, meaning, kana, audio_tag))
+
+    notes = []
+    # Card type 1: Vocab->Meaning
+    for vocab, meaning, kana, audio_tag in vocab_infos:
         notes.append(genanki.Note(
             model=vocab_meaning_model,
             fields=[vocab, meaning, kana, audio_tag]
         ))
+    # Card type 2: Audio->Meaning
+    for vocab, meaning, kana, audio_tag in vocab_infos:
         notes.append(genanki.Note(
             model=audio_meaning_model,
             fields=[audio_tag, meaning, vocab, kana]
         ))
+    # Card type 3: Meaning->Vocab
+    for vocab, meaning, kana, audio_tag in vocab_infos:
         notes.append(genanki.Note(
             model=meaning_vocab_model,
             fields=[meaning, vocab, kana, audio_tag]
         ))
+
     deck_id = get_deck_id(chapter)
     deck = genanki.Deck(
         deck_id,
