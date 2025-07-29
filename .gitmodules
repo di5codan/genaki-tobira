@@ -1,0 +1,3 @@
+[submodule "jisho"]
+	path = jisho
+	url = https://github.com/di5codan/jisho
