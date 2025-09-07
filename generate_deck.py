@@ -6,6 +6,7 @@ import genanki
 
 JISHO_PATH = './jisho'
 TOBIRA_PATH = os.path.join(JISHO_PATH, 'Tobira')
+QUARTET_PATH = os.path.join(JISHO_PATH, 'Quartet')
 VOCAB_PATH = os.path.join(JISHO_PATH, 'Vocabulary')
 BUILD_PATH = './build'
 AUDIO_PATH = os.path.join(BUILD_PATH, 'audio')
@@ -76,9 +77,12 @@ def generate_audio(vocab, kana):
         except Exception as e:
             print(f'Audio generation failed for {vocab}: {e}')
 
-def get_deck_id(chapter):
+def get_deck_id(textbook, chapter):
     prefix = 20594001
     chapter_num = int(chapter)
+    # Use different base IDs for different textbooks
+    if textbook.lower() == 'quartet':
+        prefix = 20594002
     deck_id = int(f"{prefix:08d}{chapter_num:02d}")
     return deck_id
 
@@ -91,12 +95,29 @@ def get_model(model_id, name, fields, qfmt, afmt):
     )
 
 def main():
-    if len(sys.argv) != 2:
-        print('Usage: python generate_deck.py <chapter_number>')
+    if len(sys.argv) != 3:
+        print('Usage: python generate_deck.py <textbook> <chapter_number>')
+        print('Examples:')
+        print('  python generate_deck.py tobira 1')
+        print('  python generate_deck.py quartet 1')
         sys.exit(1)
+    
     ensure_dirs()
-    chapter = sys.argv[1]
-    chapter_md = os.path.join(TOBIRA_PATH, f'第{chapter}課.md')
+    textbook = sys.argv[1].lower()
+    chapter = sys.argv[2]
+    
+    # Determine the correct path based on textbook
+    if textbook == 'tobira':
+        textbook_path = TOBIRA_PATH
+        textbook_display = 'Tobira'
+    elif textbook == 'quartet':
+        textbook_path = QUARTET_PATH
+        textbook_display = 'Quartet'
+    else:
+        print(f'Unknown textbook: {textbook}. Use "tobira" or "quartet".')
+        sys.exit(1)
+    
+    chapter_md = os.path.join(textbook_path, f'第{chapter}課.md')
     if not os.path.exists(chapter_md):
         print(f'Chapter file not found: {chapter_md}')
         sys.exit(1)
@@ -106,17 +127,17 @@ def main():
 
     # Prepare models
     vocab_meaning_model = get_model(
-        1607392300, 'Vocab->Meaning',
+        1607392300, f'{textbook_display} Vocab->Meaning',
         ['Vocab', 'Meaning', 'Kana', 'Audio'],
         VOCAB_MEANING_FRONT, VOCAB_MEANING_BACK
     )
     audio_meaning_model = get_model(
-        1607392301, 'Audio->Meaning',
+        1607392301, f'{textbook_display} Audio->Meaning',
         ['Audio', 'Meaning', 'Vocab', 'Kana'],
         AUDIO_MEANING_FRONT, AUDIO_MEANING_BACK
     )
     meaning_vocab_model = get_model(
-        1607392302, 'Meaning->Vocab',
+        1607392302, f'{textbook_display} Meaning->Vocab',
         ['Meaning', 'Vocab', 'Kana', 'Audio'],
         MEANING_VOCAB_FRONT, MEANING_VOCAB_BACK
     )
@@ -156,14 +177,14 @@ def main():
             fields=[meaning, vocab, kana, audio_tag]
         ))
 
-    deck_id = get_deck_id(chapter)
+    deck_id = get_deck_id(textbook, chapter)
     deck = genanki.Deck(
         deck_id,
-        f'Tobira Lesson {chapter}'
+        f'{textbook_display} Lesson {chapter}'
     )
     for note in notes:
         deck.add_note(note)
-    output_path = os.path.join(BUILD_PATH, f'Tobira_Lesson_{chapter}.apkg')
+    output_path = os.path.join(BUILD_PATH, f'{textbook_display}_Lesson_{chapter}.apkg')
     genanki.Package(deck, media_files=media_files).write_to_file(output_path)
     print(f'Deck written to {output_path}')
 

@@ -1,6 +1,6 @@
-# Genaki Tobira Anki Deck Generator
+# Genaki Anki Deck Generator
 
-This tool generates Anki decks for Japanese vocabulary from the Tobira textbook, using vocabulary and definitions from the [jisho](https://github.com/di5codan/jisho) submodule. Audio is automatically generated for each vocabulary term.
+This tool generates Anki decks for Japanese vocabulary from the Tobira and Quartet textbooks, using vocabulary and definitions from the [jisho](https://github.com/di5codan/jisho) submodule. Audio is automatically generated for each vocabulary term.
 
 ## Features
 
@@ -30,19 +30,25 @@ This tool generates Anki decks for Japanese vocabulary from the Tobira textbook,
 
 ## Usage
 
-Generate a deck for a specific Tobira chapter (1–15):
+Generate a deck for a specific textbook and chapter:
 
 ```bash
-python generate_deck.py <chapter_number>
+python generate_deck.py <textbook> <chapter_number>
 ```
 
-Example:
+**Examples:**
 
 ```bash
-python generate_deck.py 1
+# Generate Tobira Chapter 1
+python generate_deck.py tobira 1
+
+# Generate Quartet Chapter 1  
+python generate_deck.py quartet 1
 ```
 
-- The deck will be saved as `build/Tobira_Lesson_<chapter_number>.apkg`
+- Supported textbooks: `tobira`, `quartet`
+- Chapter numbers: 1–15 (varies by textbook)
+- The deck will be saved as `build/<Textbook>_Lesson_<chapter_number>.apkg`
 - Audio files are saved in `build/audio/`
 
 ## Directory Structure
@@ -51,13 +57,15 @@ python generate_deck.py 1
 genaki-tobira/
 ├── generate_deck.py
 ├── build/
-│   ├── Tobira_Lesson_<chapter_number>.apkg
+│   ├── <Textbook>_Lesson_<chapter_number>.apkg
 │   └── audio/
 │       ├── <vocab>.mp3
 │       └── .gitignore
 ├── jisho/ (submodule)
-│   └── Tobira/
-│       └── 第<chapter_number>課.md
+│   ├── Tobira/
+│   │   └── 第<chapter_number>課.md
+│   ├── Quartet/
+│   │   └── 第<chapter_number>課.md
 │   └── Vocabulary/
 │       └── <vocab>.md
 ```
